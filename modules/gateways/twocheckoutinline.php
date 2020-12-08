@@ -89,14 +89,15 @@ function twocheckoutinline_config() {
 function _getBillingAddress( $client ) {
 
     return [
-        'name'    => $client['firstname'] . ' ' . $client['lastname'],
-        'phone'   => $client['phonenumber'],
-        'country' => $client['country'],
-        'state'   => $client['state'],
-        'email'   => $client['email'],
-        'address' => $client['address1'],
-        'city'    => $client['city'],
-        'zip'     => $client['postcode'],
+        'name'         => $client['firstname'] . ' ' . $client['lastname'],
+        'phone'        => $client['phonenumber'],
+        'country'      => $client['country'],
+        'state'        => $client['state'],
+        'email'        => $client['email'],
+        'address'      => $client['address1'],
+        'city'         => $client['city'],
+        'zip'          => $client['postcode'],
+        'company-name' => $client['companyname'],
     ];
 }
 
@@ -195,7 +196,7 @@ function twocheckoutinline_link( $params ) {
         return '<script> let payload = ' . json_encode( $inlineParams ) . ';</script>
 <script type="text/javascript" src="' . $jsUrl . '"></script>
 <script type="text/javascript">var buttonClicked = false, noAutoSubmit = true</script>
-<button class="btn btn-success btn-sm" onclick="twoCheckoutInline()">' . $params['langpaynow'] . '</button>';
+<button class="btn btn-success btn-sm" onclick="runInlineCart(payload)">' . $params['langpaynow'] . '</button>';
     }
 }
 

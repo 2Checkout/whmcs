@@ -8,8 +8,9 @@ App::load_function('gateway');
 App::load_function('invoice');
 
 $gatewayModuleName = basename(__FILE__, '.php');
-
 $twocheckoutConfig = getGatewayVariables($gatewayModuleName);
+$skipFraud         = ( isset( $twocheckoutConfig['skipFraud'] ) && $twocheckoutConfig['skipFraud'] == 'on' ) ? true : false;
+
 
 if (!$twocheckoutConfig['type']) {
     die("Module Not Activated");
@@ -22,12 +23,13 @@ if (isset($_GET['REFNO'])) {
         $transactionId = $orderData['RefNo'];
         $invoiceId = $orderData['ExternalReference'];
         $invoiceId = checkCbInvoiceID($invoiceId, $twocheckoutConfig['name']);
-        checkCbTransID($transactionId);
 
         if (in_array($orderData['Status'], array('AUTHRECEIVED', 'COMPLETE')) && ($checkTransactionID === null)) {
             logTransaction($twocheckoutConfig['name'], $orderData, 'Success');
             // check if we want to mark the invoice as pending or paid
-            if (isset($twocheckoutConfig['skipFraud']) and !empty($twocheckoutConfig['skipFraud'])) {
+            if ($skipFraud) {
+                checkCbTransID($transactionId);
+                logTransaction( $twocheckoutConfig['paymentmethod'], $orderData, 'Success' );
                 addInvoicePayment(
                     $invoiceId,
                     $transactionId,
@@ -115,17 +117,20 @@ if (isset($_GET['REFNO'])) {
             }
         // IPN for any case other than recurring
         } else if (isset($_POST["REFNOEXT"]) && !empty($_POST["REFNOEXT"]) && $_POST["FRAUD_STATUS"] == 'APPROVED') {
-            $transactionId = $_POST["REFNO"];
-            $invoiceId = checkCbInvoiceID($_POST["REFNOEXT"], $twocheckoutConfig['name']);
-            checkCbTransID($transactionId);
-            logTransaction($twocheckoutConfig['name'], $_POST, 'Success');
-            addInvoicePayment(
-                $invoiceId,
-                $transactionId,
-                null,
-                null,
-                'twocheckoutapi'
-            );
+            if ( ! $skipFraud ) {
+                $transactionId = $_POST["REFNO"];
+                $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
+                checkCbTransID( $transactionId );
+
+                addInvoicePayment(
+                    $invoiceId,
+                    $transactionId,
+                    null,
+                    null,
+                    'twocheckoutapi'
+                );
+            }
+            logTransaction( $twocheckoutConfig['name'], $_POST, 'Success' );
         }
     } else {
         logModuleCall($gatewayModuleName, 'error', '', $body);

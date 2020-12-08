@@ -29,12 +29,12 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
         $transactionId = $orderData['RefNo'];
         $invoiceId     = $orderData['ExternalReference'];
         $invoiceId     = checkCbInvoiceID( $invoiceId, $twocheckoutConfig['paymentmethod'] );
-        checkCbTransID( $transactionId );
 
         if ( in_array( $orderData['Status'], [ 'AUTHRECEIVED', 'COMPLETE' ] ) ) {
             $baseUrl = \App::getSystemURL() . "viewinvoice.php?id=" . $invoiceId;
 
             if ( $skipFraud ) {
+                checkCbTransID( $transactionId );
                 logTransaction( $twocheckoutConfig['paymentmethod'], $orderData, 'Success' );
                 addInvoicePayment( $invoiceId, $transactionId, null, null, $twocheckoutConfig['paymentmethod'] );
                 $return .= "<meta http-equiv=\"refresh\" content=\"0;url=" . $baseUrl . "&paymentsuccess=true\">";
@@ -55,6 +55,7 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
     $return .= "</head>\n<body>\n";
     $return .= "\n</body>\n</html>\n";
     echo $return;
+    
 } else {
     echo 'Bad request parameters.';
 }
@@ -118,12 +119,13 @@ if ( isset( $_POST['REFNO'] ) && ! empty( $_POST['REFNO'] ) ) {
             // IPN for any case other than recurring
         } else {
             if ( isset( $_POST["REFNOEXT"] ) && ! empty( $_POST["REFNOEXT"] ) && $_POST["FRAUD_STATUS"] == 'APPROVED' ) {
-                $transactionId = $_POST["REFNO"];
-                $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
-                checkCbTransID( $transactionId );
+                if ( ! $skipFraud ) {
+                    $transactionId = $_POST["REFNO"];
+                    $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
+                    checkCbTransID( $transactionId );
+                    addInvoicePayment( $invoiceId, $transactionId, null, null, 'twocheckoutinline' );
+                }
                 logTransaction( $twocheckoutConfig['name'], $_POST, 'Success' );
-                invoiceSetPayMethodRemoteToken( $invoiceId, $transactionId );
-                addInvoicePayment( $invoiceId, $transactionId, null, null, 'twocheckoutinline' );
             } elseif ( isset( $_POST["REFNOEXT"] ) && ! empty( $_POST["REFNOEXT"] ) && ( $_POST["FRAUD_STATUS"] == 'DENIED' ) ) {
                 logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'Transaction DENIED' );
             }
