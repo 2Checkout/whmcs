@@ -1,2 +1,1 @@
-# whmcs
-2Checkout WHMCS Connector
+# 2Checkout WHMCS Connector (BETA)
