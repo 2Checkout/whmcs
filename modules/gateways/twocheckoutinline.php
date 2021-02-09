@@ -87,7 +87,6 @@ function twocheckoutinline_config() {
  * @return array
  */
 function _getBillingAddress( $client ) {
-
     return [
         'name'         => $client['firstname'] . ' ' . $client['lastname'],
         'phone'        => $client['phonenumber'],
@@ -95,9 +94,9 @@ function _getBillingAddress( $client ) {
         'state'        => $client['state'],
         'email'        => $client['email'],
         'address'      => $client['address1'],
+        'address2' => ! empty( $client['address2'] ) ? $client['address2'] : '',
         'city'         => $client['city'],
         'zip'          => $client['postcode'],
-        'company-name' => $client['companyname'],
     ];
 }
 
@@ -184,7 +183,11 @@ function twocheckoutinline_link( $params ) {
     $inlineParams['merchant']         = $params['accountId'];
     $inlineParams['shipping_address'] = ( $shippingAddressData );
     $inlineParams['billing_address']  = ( $billingAddressData );
-    //to be fixed by CART team first
+
+    if ( isset( $client['companyname'] ) ) {
+        $inlineParams['company-name'] = $client['companyname'];
+    }
+
     $inlineParams['signature'] = TwocheckoutApiInline::getInlineSignature( $params['accountId'],
         $params['secretWord'], $inlineParams );
     $inlineParams['products']  = _prepareProducts( $itemsArray );

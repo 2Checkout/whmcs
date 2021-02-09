@@ -53,11 +53,7 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
     $return .= "\n</body>\n</html>\n";
     echo $return;
 
-} else {
-    echo 'Bad request parameters.';
-}
-
-if ( isset( $_POST['REFNO'] ) && ! empty( $_POST['REFNO'] ) ) {
+} elseif ( isset( $_POST['REFNO'] ) && ! empty( $_POST['REFNO'] ) ) {
     $signature = $_POST["HASH"];
     $result    = "";
 

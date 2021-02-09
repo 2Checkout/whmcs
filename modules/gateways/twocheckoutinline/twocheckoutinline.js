@@ -49,6 +49,7 @@ function runInlineCart(payload){
     TwoCoInlineCart.products.removeAll();
     TwoCoInlineCart.products.addMany(payload['products']);
     TwoCoInlineCart.billing.setData(payload['billing_address']);
+    TwoCoInlineCart.billing.setCompanyName(payload['company-name']);
     TwoCoInlineCart.shipping.setData(payload['shipping_address']);
     TwoCoInlineCart.cart.setSignature(payload['signature']);
     TwoCoInlineCart.cart.setAutoAdvance(true);

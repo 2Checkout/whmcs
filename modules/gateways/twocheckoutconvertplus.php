@@ -122,14 +122,17 @@ function twocheckoutconvertplus_link( $params ) {
     $buyLinkParams = [];
 
     $buyLinkParams['name']         = $client['firstname'] . ' ' . $client['lastname'];
-    $buyLinkParams['phone']        = $client['phone'];
+    $buyLinkParams['phone']        = $client['phonenumber'];
     $buyLinkParams['country']      = $client['country'];
     $buyLinkParams['state']        = $client['state'];
     $buyLinkParams['email']        = $client['email'];
     $buyLinkParams['address']      = $client['address1'];
     $buyLinkParams['address2']     = ! empty( $client['address2'] ) ? $client['address2'] : '';
     $buyLinkParams['city']         = $client['city'];
-    $buyLinkParams['company-name'] = $client['companyname'];
+
+    if ( isset( $client['companyname'] ) ) {
+	    $buyLinkParams['company-name'] = $client['companyname'];
+    }
 
     $buyLinkParams['ship-name']    = $client['firstname'] . ' ' . $client['lastname'];
     $buyLinkParams['ship-country'] = $client['country'];

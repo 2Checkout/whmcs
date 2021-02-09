@@ -161,7 +161,7 @@ jQuery(document).ready(function(){
         newCcForm = jQuery('.frm-credit-card-input'),
         paymentForm = jQuery('#frmPayment');
         adminCreditCard = jQuery('#frmManagePaymentMethod');
-    twopayPaymentClient = new TwoPayClient(accountId);
+        twopayPaymentClient = new TwoPayClient(accountId);
 
     if (paymentMethod.length && !newCcForm.length) {
         var newCcInputs = jQuery('#newCardInfo');
@@ -437,7 +437,11 @@ function insertAndMountTwopayDivAfterInput(input) {
     twopayDiv = jQuery('#twopayCardElement');
     if (!twopayDiv.length) {
         input.after(twopayHtml(input));
-        twopayComponent = twopayPaymentClient.components.create('card', twoPayStyle);
+        if(defaultStyle){
+            twopayComponent = twopayPaymentClient.components.create('card', twoPayStyle);
+        }else{
+            twopayComponent = twopayPaymentClient.components.create('card', customTwoPayStyle);
+        }
         twopayComponent.mount('#twopayCardElement');
     }
 }
@@ -446,10 +450,13 @@ function insertAndMountTwopayDivBeforeInput(input) {
     twopayDiv = jQuery('#twopayCardElement');
     if (!twopayDiv.length) {
         input.before(twopayHtml(input));
-        twopayComponent = twopayPaymentClient.components.create('card', twoPayStyle);
+        if(defaultStyle){
+            twopayComponent = twopayPaymentClient.components.create('card', twoPayStyle);
+        }else{
+            twopayComponent = twopayPaymentClient.components.create('card', customTwoPayStyle);
+        }
         twopayComponent.mount('#twopayCardElement');
     }
-
 }
 
 function twopayHtml(input) {
