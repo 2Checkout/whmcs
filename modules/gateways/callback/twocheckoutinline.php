@@ -94,23 +94,27 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
             $externalRef   = $_POST["ORIGINAL_REFNOEXT"][0];
             $serviceId     = $_POST["IPN_EXTERNAL_REFERENCE"][0];
             $serviceId     = preg_replace( '/\D/', '', $serviceId );
-            checkCbTransID( $transactionId );
-            $newInvoiceItem = (array) Capsule::table( 'tblinvoiceitems' )
-                                             ->join( 'tblinvoices', 'tblinvoiceitems.invoiceid', '=', 'tblinvoices.id' )
-                                             ->where( 'tblinvoiceitems.relid', $serviceId )
-                                             ->where( 'tblinvoices.status', 'Unpaid' )
-                                             ->first();
-            $invoiceId      = $newInvoiceItem['invoiceid'];
-            $orderData      = TwocheckoutApiInline::callAPI( "GET", "orders/" . $transactionId . "/",
-                $twocheckoutConfig );
-            $paymentAmount  = 0;
-            if ( ! empty( $_POST['IPN_PRICE'] ) ) {
-                foreach ( $_POST['IPN_PRICE'] as $priceAdd ) {
-                    $paymentAmount = $paymentAmount + $priceAdd;
+            if (!empty($externalRef) && !empty($serviceId)) {
+                checkCbTransID( $transactionId );
+                $newInvoiceItem = (array) Capsule::table( 'tblinvoiceitems' )
+                                                 ->join( 'tblinvoices', 'tblinvoiceitems.invoiceid', '=', 'tblinvoices.id' )
+                                                 ->where( 'tblinvoiceitems.relid', $serviceId )
+                                                 ->where( 'tblinvoices.status', 'Unpaid' )
+                                                 ->first();
+                $invoiceId      = $newInvoiceItem['invoiceid'];
+                $orderData      = TwocheckoutApiInline::callAPI( "GET", "orders/" . $transactionId . "/",
+                    $twocheckoutConfig );
+                $paymentAmount  = 0;
+                if ( ! empty( $_POST['IPN_PRICE'] ) ) {
+                    foreach ( $_POST['IPN_PRICE'] as $priceAdd ) {
+                        $paymentAmount = $paymentAmount + $priceAdd;
+                    }
                 }
-            }
-            if ( ! empty( $invoiceId ) && in_array( $orderData['Status'], [ 'AUTHRECEIVED', 'COMPLETE' ] ) ) {
-                addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, null, $twocheckoutConfig['name'] );
+                if ( ! empty( $invoiceId ) && in_array( $orderData['Status'], [ 'AUTHRECEIVED', 'COMPLETE' ] ) ) {
+                    addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, null, $twocheckoutConfig['name'] );
+                }
+            } else {
+                logModuleCall($gatewayModuleName, 'error', '', 'Recurring 2Checkout transaction ' . $transactionId . ' IPN with no item external reference');
             }
             // IPN for any case other than recurring
         } else {

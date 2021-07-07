@@ -131,7 +131,7 @@ function twocheckoutconvertplus_link( $params ) {
     $buyLinkParams['city']         = $client['city'];
 
     if ( isset( $client['companyname'] ) ) {
-	    $buyLinkParams['company-name'] = $client['companyname'];
+        $buyLinkParams['company-name'] = $client['companyname'];
     }
 
     $buyLinkParams['ship-name']    = $client['firstname'] . ' ' . $client['lastname'];
@@ -162,15 +162,16 @@ function twocheckoutconvertplus_link( $params ) {
 
             $itemsArray["duration"][]      = ( isset( $item['recurringCyclePeriod'] ) && isset( $item['recurringCycleUnits'] ) ) ? '1:' . 'FOREVER' : '';
             $itemsArray['renewal-price'][] = abs( $lineItemAmount );
-
+            $itemsArray['item-ext-ref'][] = $item['itemId'];
         }
     }
 
-    $buyLinkParams['prod']     = implode( ';', $itemsArray["prod"] );
-    $buyLinkParams['price']    = implode( ';', $itemsArray["price"] );
-    $buyLinkParams['qty']      = implode( ';', $itemsArray["qty"] );
-    $buyLinkParams['type']     = implode( ';', $itemsArray["type"] );
-    $buyLinkParams['tangible'] = implode( ';', $itemsArray["tangible"] );
+    $buyLinkParams['prod']         = implode( ';', $itemsArray["prod"] );
+    $buyLinkParams['item-ext-ref'] = implode( ';', $itemsArray["item-ext-ref"] );
+    $buyLinkParams['price']        = implode( ';', $itemsArray["price"] );
+    $buyLinkParams['qty']          = implode( ';', $itemsArray["qty"] );
+    $buyLinkParams['type']         = implode( ';', $itemsArray["type"] );
+    $buyLinkParams['tangible']     = implode( ';', $itemsArray["tangible"] );
 
     if ( isset( $itemsArray["recurrence"] ) ) {
         $buyLinkParams['recurrence'] = implode( ';', $itemsArray["recurrence"] );

@@ -145,6 +145,7 @@ function twocheckoutinline_link( $params ) {
             $lineItem["tangible"] = 0;
             $lineItem["type"]     = "PRODUCT";
             $lineItem["price"]    = abs( $lineItemAmount );
+            $lineItem["reference"]["external"]["item"] = $item['itemId'];
             if ( $item['recurringCyclePeriod'] && $item['recurringCyclePeriod'] > 0 ) {
                 $lineItem["recurrence"]    = [
                     'unit'   => _mapRecurringUnitInline( $item['recurringCycleUnits'] ),
@@ -217,6 +218,10 @@ function _prepareProducts( $products ) {
         if ( isset( $product['renewal-price'] ) ) {
             $product['renewalPrice'] = $product['renewal-price'];
             unset( $product['renewal-price'] );
+        }
+        if ( isset( $product["reference"]["external"]["item"] ) ) {
+            $product['externalReference'] = $product["reference"]["external"]["item"];
+            unset( $product["reference"] );
         }
         $items[] = $product;
     }
