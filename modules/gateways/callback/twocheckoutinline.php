@@ -90,11 +90,16 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
 
         // IPN for new recurring invoice
         if ( isset( $_POST["ORIGINAL_REFNOEXT"][0] ) && ! empty( $_POST["ORIGINAL_REFNOEXT"][0] ) && $_POST["FRAUD_STATUS"] == 'APPROVED' ) {
+            $gateway_log_result = 'Failed';
             $transactionId = $_POST["REFNO"];
             $externalRef   = $_POST["ORIGINAL_REFNOEXT"][0];
             $serviceId     = $_POST["IPN_EXTERNAL_REFERENCE"][0];
             $serviceId     = preg_replace( '/\D/', '', $serviceId );
-            if (!empty($externalRef) && !empty($serviceId)) {
+            if (empty($serviceId))
+                $serviceId = $externalRef;
+
+            if (!empty($serviceId)) 
+            {
                 checkCbTransID( $transactionId );
                 $newInvoiceItem = (array) Capsule::table( 'tblinvoiceitems' )
                                                  ->join( 'tblinvoices', 'tblinvoiceitems.invoiceid', '=', 'tblinvoices.id' )
@@ -112,19 +117,24 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
                 }
                 if ( ! empty( $invoiceId ) && in_array( $orderData['Status'], [ 'AUTHRECEIVED', 'COMPLETE' ] ) ) {
                     addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, null, $twocheckoutConfig['name'] );
-                }
+                    $gateway_log_result = 'Successful';
+                } else 
+                    $gateway_log_result = 'Invoice ID not found or Order status is not AUTHRECEIVED or COMPLETE';
             } else {
+                $gateway_log_result = 'Failed to detect an external reference';
                 logModuleCall($gatewayModuleName, 'error', '', 'Recurring 2Checkout transaction ' . $transactionId . ' IPN with no item external reference');
             }
+            logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, $gateway_log_result );
             // IPN for any case other than recurring
         } else {
             if ( isset( $_POST["REFNOEXT"] ) && ! empty( $_POST["REFNOEXT"] ) && $_POST["FRAUD_STATUS"] == 'APPROVED' ) {
-                if ( ! $skipFraud ) {
-                    $transactionId = $_POST["REFNO"];
-                    $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
-                    checkCbTransID( $transactionId );
-                    addInvoicePayment( $invoiceId, $transactionId, null, null, 'twocheckoutinline' );
-                }
+                // Let's ignore 'skipFraud' gateway option
+                //if ( ! $skipFraud ) {
+                $transactionId = $_POST["REFNO"];
+                $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
+                checkCbTransID( $transactionId );
+                addInvoicePayment( $invoiceId, $transactionId, null, null, 'twocheckoutinline' );
+                //}
                 logTransaction( $twocheckoutConfig['name'], $_POST, 'Success' );
             } elseif ( isset( $_POST["REFNOEXT"] ) && ! empty( $_POST["REFNOEXT"] ) && ( $_POST["FRAUD_STATUS"] == 'DENIED' ) ) {
                 logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'Transaction DENIED' );
@@ -132,6 +142,7 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
         }
     } else {
         logModuleCall( $gatewayModuleName, 'error', '', $body );
+        logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'Error. Cannot verify signature.' );
         echo '<EPAYMENT>Error. Cannot verify signature.</EPAYMENT>';
     }
 }
