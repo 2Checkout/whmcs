@@ -92,11 +92,14 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
         $paymentAmount  = 0;
         $exchange_rate = 1;
         $fee = 0;
+        $fx_commission = 1;
         if ((float)$_POST['FX_RATE'] > 0)
             $exchange_rate = (float)$_POST['FX_RATE'];
+        if ((float)$_POST['FX_MARKUP'] > 0)
+            $fx_commission = 100.0 / (100.0 - (float)$_POST['FX_MARKUP']);
         if ( ! empty( $_POST['IPN_PRICE'] ) ) {
             foreach ( $_POST['IPN_PRICE'] as $priceAdd ) {
-                $paymentAmount = $paymentAmount + ((float)$priceAdd) * $exchange_rate;
+                $paymentAmount = $paymentAmount + ((float)$priceAdd) * $exchange_rate * $fx_commission;
             }
         }
         if (!empty($_POST['PAYABLE_AMOUNT']))
