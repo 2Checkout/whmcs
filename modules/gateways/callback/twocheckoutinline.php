@@ -70,8 +70,9 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
             if ( is_array( $val ) ) {
                 $result .= ArrayExpand( $val );
             } else {
-                $size   = strlen( StripSlashes( $val ) );
-                $result .= $size . StripSlashes( $val );
+                $converted_str = htmlspecialchars_decode(StripSlashes( $val ));
+                $size   = strlen($converted_str);
+                $result .= $size . $converted_str;
             }
         }
     }
@@ -223,8 +224,9 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
 function ArrayExpand( $array ) {
     $retval = "";
     for ( $i = 0; $i < sizeof( $array ); $i ++ ) {
-        $size   = strlen( StripSlashes( $array[ $i ] ) );
-        $retval .= $size . StripSlashes( $array[ $i ] );
+        $converted_str = htmlspecialchars_decode(StripSlashes($array[$i]));
+        $size   = strlen($converted_str);
+        $retval .= $size . $converted_str;
     }
 
     return $retval;
