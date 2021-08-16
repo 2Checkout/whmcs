@@ -135,10 +135,11 @@ function twocheckoutinline_link( $params ) {
     $shippingAddressData = _getShippingAddress( $client );
     $itemsArray          = [];
     $creditOrVoucher     = false;
+
     foreach ( $products as $item ) {
         $lineItem       = [];
         $lineItemAmount = ( array_key_exists( 'firstPaymentAmount',
-            $item ) ) ? $item['firstPaymentAmount'] : $item['lineItemAmount'];
+            $item ) ) ? $item['firstPaymentAmount'] : $item['amount'];
         if ( $lineItemAmount > 0 ) {
             $lineItem["quantity"] = 1;
             $lineItem["name"]     = $item['description'];
