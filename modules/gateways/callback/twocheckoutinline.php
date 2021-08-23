@@ -106,6 +106,11 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
         if (!empty($_POST['PAYABLE_AMOUNT']))
             $fee = $paymentAmount - (float)$_POST['PAYABLE_AMOUNT'];
 
+        if ($paymentAmount < 0) {
+            logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'External refund. Ignoring.' );
+            exit();
+        }
+
         // IPN for new recurring invoice
         if ( isset( $_POST["ORIGINAL_REFNOEXT"][0] ) && ! empty( $_POST["ORIGINAL_REFNOEXT"][0] ) && $_POST["FRAUD_STATUS"] == 'APPROVED' ) {
             $gateway_log_result = 'Failed';
