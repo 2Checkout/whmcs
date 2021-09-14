@@ -1,9 +1,4 @@
-if (payload.error === true) {
-    alert('Sorry, the ' + payload.payment_method + ' payment method doesn\'t  support vouchers or promotions! Please try with different payment method!');
-} else {
-    prepareInline(payload);
-}
-
+prepareInline(payload);
 function prepareInline(payload){
     (function (document, src, libName, config) {
 

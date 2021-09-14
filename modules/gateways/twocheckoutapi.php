@@ -1,8 +1,10 @@
 <?php
 
-require_once realpath(dirname(__FILE__)) . "/twocheckoutapi/lib/TwocheckoutApi.php";
 use WHMCS\Billing\Invoice;
+use WHMCS\Database\Capsule;
 
+
+require_once realpath(dirname(__FILE__)) . "/twocheckout/lib/TwocheckoutHelper.php";
 if (!defined("WHMCS")) {
     die("This file cannot be accessed directly");
 }
@@ -17,7 +19,7 @@ function twocheckoutapi_MetaData()
 
 function twocheckoutapi_config()
 {
-	$default_style = "{
+    $default_style = "{
                     'margin': '0',
                     'fontFamily': 'Helvetica, sans-serif',
                     'fontSize': '1rem',
@@ -171,68 +173,28 @@ function twocheckoutapi_config()
                     }
                 }";
 
-    return array(
-        'FriendlyName' => array(
-            'Type' => 'System',
-            'Value' => '2Checkout API Gateway',
-        ),
-        'accountId' => array(
-            'FriendlyName' => 'Merchant Code',
-            'Type' => 'text',
-            'Size' => '30',
-            'Default' => '',
-            'Description' => 'Enter your Merchant Code here',
-        ),
-        'secretWord' => array(
-            'FriendlyName' => 'Secret Word',
-            'Type' => 'password',
-            'Size' => '50',
-            'Default' => '',
-            'Description' => 'Enter secret word here',
-        ),
-        'secretKey' => array(
-            'FriendlyName' => 'Secret Key',
-            'Type' => 'password',
-            'Size' => '50',
-            'Default' => '',
-            'Description' => 'Enter secret key here',
-        ),
-        'testMode' => array(
-            'FriendlyName' => 'Test Mode',
+    $extraFields = [
+        'defaultStyle' => [
+            'FriendlyName' => 'Use default style',
             'Type' => 'yesno',
-            'Description' => 'Tick to enable test mode',
-        ),
-        'skipFraud' => array(
-            'FriendlyName' => 'Skip 2CO Fraud Check',
-            'Type' => 'yesno',
-            'Description' => 'Tick to mark invoices as paid without waiting for 2Checkout fraud review.',
-        ),
-        'defaultStyle' => array(
-	        'FriendlyName' => 'Use default style',
-	        'Type' => 'yesno',
-	        'Description' => 'Yes, I like the default style',
-        ),
-        'customTwoPayStyle' => array(
-	        'FriendlyName' => 'Custom style',
-	        'Type'         => 'textarea',
-	        'Rows'         => '5',
-	        'Cols'         => '30',
-	        'Default'      =>  $default_style,
-	        'Description' => '<i style="color: #e35d5d"><b>IMPORTANT! </b><br /> This is the styling object that styles your form.
+            'Description' => 'Yes, I like the default style',
+        ],
+        'customTwoPayStyle' => [
+            'FriendlyName' => 'Custom style',
+            'Type' => 'textarea',
+            'Rows' => '5',
+            'Cols' => '30',
+            'Default' => $default_style,
+            'Description' => '<i style="color: #e35d5d"><b>IMPORTANT! </b><br /> This is the styling object that styles your form.
                      Do not remove or add new classes. You can modify the existing ones. Use
                       double quotes for all keys and values!  <br /> VALID JSON FORMAT REQUIRED (validate 
                       json before save here: <a href="https://jsonlint.com/" target="_blank">https://jsonlint.com/</a>) </i>. <br >
                       Also you can find more about styling your form <a href="https://knowledgecenter.2checkout.com/API-Integration/2Pay.js-payments-solution/2Pay.js-Payments-Solution-Integration-Guide/How_to_customize_and_style_the_2Pay.js_payment_form"
                        target="_blank">here</a>!',
-        ),
-        'refundReasons' => array(
-            'FriendlyName' => 'Reasons for Refunds',
-            'Type'         => 'textarea',
-            'Rows'         => '10',
-            'Cols'         => '30',
-            'Description'  => 'Enter the reasons for refunds that you have <a target="_blank" href="https://knowledgecenter.2checkout.com/Documentation/27Refunds_and_chargebacks/Refunds#Adding_custom_refund_reasons">setup in your 2Checkout account</a>.',
-        )
-    );
+        ]
+    ];
+    return TwocheckoutHelper::config('2Checkout API Gateway', \App::getSystemURL() . 'modules/gateways/callback/twocheckout-ipn.php?tco_type=api', $extraFields);
+
 }
 
 add_hook("ClientAreaFooterOutput", 1, function (array $vars) {
@@ -248,15 +210,15 @@ add_hook("ClientAreaFooterOutput", 1, function (array $vars) {
 function twocheckoutapi_cc_validation(array $params = array())
 {
     if (App::isInRequest("remoteStorageToken")) {
-        WHMCS\Session::set("remoteStorageToken", (string) App::getFromRequest("remoteStorageToken"));
+        WHMCS\Session::set("remoteStorageToken", (string)App::getFromRequest("remoteStorageToken"));
     }
     return "";
 }
+
 function twocheckoutapi_credit_card_input(array $params = array())
 {
     $assetHelper = DI::make("asset");
-    $now = time();
-    $jsUrl = $assetHelper->getWebRoot() . "/modules/gateways/twocheckoutapi/twocheckoutapi.js?a=" . $now;
+    $jsUrl = $assetHelper->getWebRoot() . "/modules/gateways/twocheckout/twocheckoutapi.js";
 
     return "<script type=\"text/javascript\">\n  var customTwoPayStyle = " . $params["customTwoPayStyle"] . ";" . "     var defaultStyle = '" . $params["defaultStyle"] . "';" . "  var accountId = '" . $params["accountId"] . "';" . "\n</script>\n<script type=\"text/javascript\" src=\"" . $jsUrl . "\"></script>";
 }
@@ -265,7 +227,7 @@ function twocheckoutapi_storeremote(array $params = array())
 {
     $token = WHMCS\Session::getAndDelete("remoteStorageToken");
     if (!$token && App::isInRequest("remoteStorageToken")) {
-        $token = (string) App::getFromRequest("remoteStorageToken");
+        $token = (string)App::getFromRequest("remoteStorageToken");
     }
 
     $response = [
@@ -279,49 +241,46 @@ function twocheckoutapi_storeremote(array $params = array())
 function twocheckoutapi_capture($params)
 {
     // Gateway Configuration Parameters
-    $twocheckoutConfig = array(
+    $twocheckoutConfig = [
         "accountId" => $params['accountId'],
         "secretKey" => $params['secretKey']
-    );
+    ];
 
-    $itemsArray = array();
-
+    $itemsArray = [];
     $currency = $params['currency'];
-
     $invoice = Invoice::find($params['invoiceid']);
-    $lineitemDetails = $invoice->getBillingValues();
-
-    $overdue = $lineitemDetails['overdue'];
-    unset($lineitemDetails['overdue']);
-
+    $products = $invoice->getBillingValues();
+    $coupons = $invoice->items->toArray();
+    $overdue = $products['overdue'];
+    unset($products['overdue']);
     $recurring = false;
 
-    foreach ($lineitemDetails as $lineitemDetail) {
-        $lineItem = array();
-        if (array_key_exists('firstPaymentAmount', $lineitemDetail)) {
-            $lineItemAmount = $lineitemDetail['firstPaymentAmount'];
+    foreach ($products as $item) {
+        $lineItem = [];
+        if (array_key_exists('firstPaymentAmount', $item)) {
+            $lineItemAmount = $item['firstPaymentAmount'];
         } else {
-            $lineItemAmount = $lineitemDetail['lineItemAmount'];
+            $lineItemAmount = $item['amount'];
         }
+        $lineItem["Code"] = null;
+        $lineItem["Quantity"] = "1";
+        $lineItem["IsDynamic"] = true;
+        $lineItem["Tangible"] = false;
 
         if ($lineItemAmount >= 0) {
-            $lineItem["Code"] = null;
-            $lineItem["Quantity"] = "1";
-            $lineItem["IsDynamic"] = true;
-            $lineItem["Tangible"] = false;
             $lineItem["PurchaseType"] = "PRODUCT";
-            $lineItem["Name"] = $lineitemDetail['description'];
-            $lineItem["Price"] = array(
+            $lineItem["Name"] = $item['description'];
+            $lineItem["Price"] = [
                 "Amount" => abs($lineItemAmount),
                 "Type" => "CUSTOM",
                 "Currency" => $currency
-            );
-            $lineItem["ExternalReference"] = $lineitemDetail['itemId'];
+            ];
+            $lineItem["ExternalReference"] = $item['itemId'];
 
-            if (!$overdue && $lineitemDetail['recurringCyclePeriod'] && $lineitemDetail['recurringCyclePeriod'] > 0) {
-                $recurringDetails = array();
-                $recurringDetails["CycleLength"] = $lineitemDetail['recurringCyclePeriod'];
-                $recurringDetails["CycleUnit"] = mapRecurringUnit($lineitemDetail['recurringCycleUnits']);
+            if (!$overdue && $item['recurringCyclePeriod'] && $item['recurringCyclePeriod'] > 0) {
+                $recurringDetails = [];
+                $recurringDetails["CycleLength"] = $item['recurringCyclePeriod'];
+                $recurringDetails["CycleUnit"] = TwocheckoutHelper::mapRecurringUnit($item['recurringCycleUnits']);
                 $recurringDetails["CycleAmount"] = abs($lineItemAmount);
                 $recurringDetails["ContractLength"] = 0;
                 $recurringDetails["ContractUnit"] = "FOREVER";
@@ -329,16 +288,24 @@ function twocheckoutapi_capture($params)
 
                 $recurring = true;
             }
+
+            $serviceId = (int)preg_replace('/\D/', '', $item['itemId']);
+            //work around for recurring products with nonrecurring promotions
+            foreach ($coupons as $product) {
+                if ((isset($product['relid']) && $product['relid'] === $serviceId) &&
+                    (isset($product['service']) && $product['service']) && $product['amount'] > 0) {
+                    $promotion = Capsule::table('tblpromotions')->find($product['service']['promoid']);
+                    if ($promotion && $promotion->recurring === 0 && $product) {
+                        $lineItem["Price"]["Amount"] = abs($product['service']['firstpaymentamount']);
+                    }
+                }
+            }
         } else {
             // We have a discount and need to apply it as a coupon
-            $lineItem["Code"] = null;
-            $lineItem["Quantity"] = "1";
-            $lineItem["IsDynamic"] = true;
-            $lineItem["Tangible"] = false;
             $lineItem["PurchaseType"] = "COUPON";
-            $lineItem["Name"] = $lineitemDetail['description'];
+            $lineItem["Name"] = $item['description'];
             $lineItem["Price"] = array(
-                "Amount" => abs($lineitemDetail['amount']),
+                "Amount" => abs($item['amount']),
                 "Type" => "CUSTOM",
                 "Currency" => $currency
             );
@@ -389,13 +356,11 @@ function twocheckoutapi_capture($params)
     // Payment Method Details
     $paymentMethodDetails = array(
         "EesToken" => $params['gatewayid'],
-        "Vendor3DSReturnURL" => $params['systemurl'] . "modules/gateways/callback/twocheckoutapi.php",
-        "Vendor3DSCancelURL" => $params['systemurl'] . "modules/gateways/callback/twocheckoutapi.php",
+        "Vendor3DSReturnURL" => $params['systemurl'] . "modules/gateways/callback/twocheckout-ipn.php?tco_type=api",
+        "Vendor3DSCancelURL" => $params['systemurl'] . "modules/gateways/callback/twocheckout-ipn.php?tco_type=api",
     );
 
-    if ($recurring == true) {
-        $paymentMethodDetails['RecurringEnabled'] = $recurring;
-    }
+    $paymentMethodDetails['RecurringEnabled'] = $recurring;
 
     // Order Details
     $orderDetails = array(
@@ -403,7 +368,7 @@ function twocheckoutapi_capture($params)
         "Language" => $params['en'],
         "Country" => $params['clientdetails']['country'],
         "ExternalReference" => $params['invoiceid'],
-        "Source" => 'whmcs-psp-api',
+        "Source" => 'WHMCS_' . $params['whmcsVersion'],
         "Items" => $itemsArray,
         "PaymentDetails" => array(
             "Type" => "EES_TOKEN_PAYMENT",
@@ -418,13 +383,13 @@ function twocheckoutapi_capture($params)
     }
 
     // Use to not store payment methods, this is a work around until whmcs gets back to us on a proper way to handle this
-     $payMethod = \WHMCS\Payment\PayMethod\Model::find($params['payMethod']['id']);
-     $payment = $payMethod->payment;
-     $payment->deleteRemote();
-     $payMethod->delete();
+    $payMethod = \WHMCS\Payment\PayMethod\Model::find($params['payMethod']['id']);
+    $payment = $payMethod->payment;
+    $payment->deleteRemote();
+    $payMethod->delete();
 
     try {
-        $responseData = TwocheckoutApi::callAPI("POST", "orders/", $twocheckoutConfig, $orderDetails);
+        $responseData = TwocheckoutHelper::callAPI("POST", "orders/", $twocheckoutConfig, $orderDetails);
 
         if (isset($responseData['Status'])) {
             if (isset($responseData['PaymentDetails']['PaymentMethod']['Authorize3DS']) &&
@@ -432,32 +397,34 @@ function twocheckoutapi_capture($params)
                 !empty($responseData['PaymentDetails']['PaymentMethod']['Authorize3DS']['Href'])) {
                 header("Location: " . $responseData['PaymentDetails']['PaymentMethod']['Authorize3DS']['Href'] . '?avng8apitoken=' . $responseData['PaymentDetails']['PaymentMethod']['Authorize3DS']['Params']['avng8apitoken']);
                 exit;
-            } else if ($responseData['Status'] == 'AUTHRECEIVED') {
-                // check if we want to mark the invoice as pending or paid
-                if (isset($params['skipFraud']) and !empty($params['skipFraud'])) {
+            } else {
+                if ($responseData['Status'] == 'AUTHRECEIVED') {
+                    // check if we want to mark the invoice as pending or paid
+                    if (isset($params['skipFraud']) and !empty($params['skipFraud'])) {
+
+                        $returnData = [
+                            'status' => 'success',
+                            'rawdata' => $responseData,
+                            'transid' => $responseData['RefNo']
+                        ];
+                    } else {
+                        $url = \App::getSystemURL() . "viewinvoice.php?id=" . $params['invoiceid'] . "&pendingreview=true";
+                        header("Location:" . $url);
+                        exit;
+                    }
 
                     $returnData = [
-                        'status'  => 'success',
+                        'status' => 'success',
                         'rawdata' => $responseData,
                         'transid' => $responseData['RefNo']
                     ];
                 } else {
-                    $url = \App::getSystemURL() . "viewinvoice.php?id=" . $params['invoiceid'] . "&pendingreview=true";
-                    header("Location:" . $url);
-                    exit;
+                    $returnData = [
+                        'status' => 'declined',
+                        'declinereason' => 'Credit card declined. Please contact issuer.',
+                        'rawdata' => $responseData,
+                    ];
                 }
-
-                $returnData = [
-                    'status'  => 'success',
-                    'rawdata' => $responseData,
-                    'transid' => $responseData['RefNo']
-                ];
-            } else {
-                $returnData = [
-                    'status' => 'declined',
-                    'declinereason' => 'Credit card declined. Please contact issuer.',
-                    'rawdata' => $responseData,
-                ];
             }
         } else {
             $returnData = [
@@ -478,99 +445,24 @@ function twocheckoutapi_capture($params)
 
 function twocheckoutapi_refund($params)
 {
-    // Gateway Configuration Parameters
-    $twocheckoutConfig = array(
-        "accountId" => $params['accountId'],
-        "secretKey" => $params['secretKey']
-    );
-
-    // Refund Reason
-    if (isset($_POST['reason']) && !empty($_POST['reason'])) {
-        $refundReason = $_POST['reason'];
-    } else {
-        $refundReason = 'Cancellation';
-    }
-
-    // Refund Comment
-    if (isset($_POST['comment']) && !empty($_POST['comment'])) {
-        $refundComment = $_POST['comment'];
-    } else {
-        $refundComment = '';
-    }
-
-    $orderData = TwocheckoutApi::callAPI("GET", "orders/{$params['transid']}/", $twocheckoutConfig);
-
-    if ($params['amount'] == $orderData["GrossPrice"]) {
-        // Refund Details
-        $refundDetails = [
-            "amount"  => $params['amount'],
-            "comment" => $refundComment,
-            "reason"  => $refundReason
-        ];
-    } else {
-        $lineItems = $orderData["Items"];
-        usort($lineItems, "cmpPrices");
-        $lineitemReference = $lineItems[0]["LineItemReference"];
-        if ($lineItems[0]['Price']['GrossPrice'] >= $params['amount']) {
-            // Refund Item Details
-            $itemsArray[] = array(
-                "Quantity"          => "1",
-                "LineItemReference" => $lineitemReference,
-                "Amount"            => $params['amount']
-            );
-
-            // Refund Details
-            $refundDetails = [
-                "amount"  => $params['amount'],
-                "comment" => $refundComment,
-                "reason"  => $refundReason,
-                "items"   => $itemsArray
-            ];
-        } else {
-            return [
-                'status'  => 'error',
-                'rawdata' => 'Partial refund amount cannot exceed the highest priced item. Please login to your 2Checkout admin to issue the partial refund manually.',
-                'transid' => $params['transid'],
-            ];
-        }
-    }
-
-    try {
-        $responseData = TwocheckoutApi::callAPI("POST", "orders/{$params['transid']}/refund/", $twocheckoutConfig, $refundDetails);
-        if (!isset($responseData['error_code']) && $responseData == '1') {
-            $returnData = [
-                'status' => 'success',
-                'transid' => $params['transid'],
-                'rawdata' => $responseData,
-            ];
-        } else {
-            $returnData = [
-                'status' => 'declined',
-                'transid' => $params['transid'],
-                'rawdata' => $responseData,
-            ];
-        }
-    } catch (Exception $e) {
-        $returnData = [
-            'status' => 'declined',
-            'transid' => $params['transid']
-        ];
-    }
-
-    return $returnData;
+    return TwocheckoutHelper::refund($params, $_POST);
 }
 
-function cmpPrices($a, $b) {
+function cmpPrices($a, $b)
+{
     if ($a['Price']['GrossPrice'] < $b['Price']['GrossPrice']) {
         return 1;
-    } else if ($a['Price']['GrossPrice'] > $b['Price']['GrossPrice']) {
-        return -1;
     } else {
-        return 0;
+        if ($a['Price']['GrossPrice'] > $b['Price']['GrossPrice']) {
+            return -1;
+        } else {
+            return 0;
+        }
     }
 }
 
-function mapRecurringUnit($unit) {
+function mapRecurringUnit($unit)
+{
     $recurringUnits = [
         "Days" => "DAY",
         "Weeks" => "WEEK",
