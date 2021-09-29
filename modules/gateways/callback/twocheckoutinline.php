@@ -70,7 +70,8 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
             if ( is_array( $val ) ) {
                 $result .= ArrayExpand( $val );
             } else {
-                $converted_str = htmlspecialchars_decode(StripSlashes( $val ), ENT_COMPAT | ENT_QUOTES);
+                //$converted_str = htmlspecialchars_decode(StripSlashes( $val ), ENT_COMPAT | ENT_QUOTES);
+                $converted_str = htmlspecialchars_decode($val, ENT_COMPAT | ENT_QUOTES);
                 $size   = strlen($converted_str);
                 $result .= $size . $converted_str;
             }
@@ -130,75 +131,27 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
                                                  ->where( 'tblinvoices.status', 'Unpaid' )
                                                  ->first();
                 $invoiceId      = $newInvoiceItem['invoiceid'];
-                $orderData      = TwocheckoutApiInline::callAPI( "GET", "orders/" . $transactionId . "/",
-                    $twocheckoutConfig );
+                $orderData      = TwocheckoutApiInline::callAPI( "GET", "orders/" . $transactionId . "/", $twocheckoutConfig );
                 
                 if (in_array( $orderData['Status'], [ 'AUTHRECEIVED', 'COMPLETE' ])) {
-                    $is_applied = false;
-                    if (!empty($invoiceId)) {
-                        addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, $fee, $twocheckoutConfig['name'] );
-                        $gateway_log_result = 'Successful';
-                        $is_applied = true;
-                    } else { // try to get a paid or cancelled invoice and apply an overpayment to client's credit balance
+                    if (empty($invoiceId)) {
                         $paidInvoiceItem = (array) Capsule::table( 'tblinvoiceitems' )
                                                  ->join( 'tblinvoices', 'tblinvoiceitems.invoiceid', '=', 'tblinvoices.id' )
                                                  ->where( 'tblinvoiceitems.relid', $serviceId )
                                                  ->orderBy("tblinvoiceitems.id", "desc")
                                                  ->first();
-                        $userID = $paidInvoiceItem['userid'];
                         $invoiceId = $paidInvoiceItem['invoiceid'];
-                        if (!empty($userID)) {
-                            // add credit balance
-                            $is_applied = true;
-                            try {
-                                (array) Capsule::table('tblaccounts')->insert([
-                                    ["userid" => intval($userID), 
-                                    "currency" => 0, 
-                                    "gateway" => $twocheckoutConfig['name'], 
-                                    "date" => Carbon::now(), 
-                                    "description" => "Invoice " . $invoiceId . " overpayment to credit balance", 
-                                    "amountin" => $paymentAmount, 
-                                    "fees" => $fee, 
-                                    "rate" => 1, 
-                                    "transid" => $transactionId]
-                                ]);
-                                (array) Capsule::table('tblcredit')->insert([
-                                    "clientid" => intval($userID), 
-                                    "date" => Carbon::now(), 
-                                    "description" => "Invoice " . $invoiceId . " overpayment to credit balance", 
-                                    "amount" => $paymentAmount
-                                ]);
-                                (array) Capsule::table('tblclients')->where("id", intval($userID))->increment("credit", $paymentAmount);
-                                $gateway_log_result = "Overpayment to credit balance";
-                            } catch (\Exception $e) {
-                                $gateway_log_result = "Failed to add credit";
-                                logActivity("Failed to add invoice " . $invoiceId . " overpayment to credit: " . $e->getMessage(), $userID);
-                            }
-                            /*
-                            // Code below doesn't work yet as WHMCS API method AddTransaction doesn't work as expected. 
-                            // Replaced with 3 SQL queries above
-                            $params = ["paymentmethod" => $twocheckoutConfig['name'], 
-                                       "userid" => intval($userID), 
-                                       "transid" => $transactionId, 
-                                       "date" => date('d/m/Y'),
-                                       "currencyid" => 1,
-                                       "description" => "Invoice " . $invoiceId . " overpayment to credit balance",
-                                       "amountin" => $paymentAmount, 
-                                       "fees" => $fee,
-                                       "credit" => true];
-                            $results = localAPI('AddTransaction', $$params);
-                            if ($results['result'] == "success")
-                                $gateway_log_result = "Invoice " . $invoiceId . " overpayment to credit balance";
-                            else
-                                $gateway_log_result = "Failed to add credit: " . var_export($results, true) . " / " . var_export($params, true);
-                            */
-                        }
-                        if (!$is_applied)
-                            $gateway_log_result = "Failed to detect invoice or user";
                     }
-                }
-                 else 
+
+                    if (!empty($invoiceId)) {
+                        addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, $fee, $twocheckoutConfig['paymentmethod'] );
+                        $gateway_log_result = 'Successful';
+                    } else {
+                        $gateway_log_result = "Failed to detect invoice or user";
+                    }
+                } else {
                     $gateway_log_result = 'Order status is not COMPLETE';
+                }
             } else {
                 $gateway_log_result = 'Failed to detect an external reference';
                 logModuleCall($gatewayModuleName, 'error', '', 'Recurring 2Checkout transaction ' . $transactionId . ' IPN with no item external reference');
@@ -210,11 +163,11 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
                 // Let's ignore 'skipFraud' gateway option
                 //if ( ! $skipFraud ) {
                 $transactionId = $_POST["REFNO"];
-                $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['name'] );
+                $invoiceId     = checkCbInvoiceID( $_POST["REFNOEXT"], $twocheckoutConfig['paymentmethod'] );
                 checkCbTransID( $transactionId );
-                addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, $fee, $twocheckoutConfig['name'] );
+                addInvoicePayment( $invoiceId, $transactionId, $paymentAmount, $fee, $twocheckoutConfig['paymentmethod'] );
                 //}
-                logTransaction( $twocheckoutConfig['name'], $_POST, 'Successful' );
+                logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'Successful' );
             } elseif ( isset( $_POST["REFNOEXT"] ) && ! empty( $_POST["REFNOEXT"] ) && ( $_POST["FRAUD_STATUS"] == 'DENIED' ) ) {
                 logTransaction( $twocheckoutConfig['paymentmethod'], $_POST, 'Transaction DENIED' );
             }
@@ -229,7 +182,7 @@ if ( isset( $_GET['refno'] ) && ! empty( $_GET['refno'] ) ) {
 function ArrayExpand( $array ) {
     $retval = "";
     for ( $i = 0; $i < sizeof( $array ); $i ++ ) {
-        $converted_str = htmlspecialchars_decode(StripSlashes($array[$i]), ENT_COMPAT | ENT_QUOTES);
+        $converted_str = htmlspecialchars_decode($array[$i], ENT_COMPAT | ENT_QUOTES);
         $size   = strlen($converted_str);
         $retval .= $size . $converted_str;
     }
