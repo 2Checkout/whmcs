@@ -43,7 +43,7 @@ class TwocheckoutHelper
      * @return array
      * @throws Exception
      */
-    public static function refund($params, $post)
+    public static function refund($params, $post = [])
     {
         // Gateway Configuration Parameters
         $twocheckoutConfig = [
@@ -212,5 +212,16 @@ class TwocheckoutHelper
             ]
         ];
         return array_merge($fields, $extraFields);
+    }
+
+    /**
+     * sets the platform version but only the major and minor iteration, without the release version
+     * @param $version
+     * @return string
+     */
+    public static function getFormattedVersion($version)
+    {
+        $pieces = explode('.', $version);
+        return 'WHMCS_' . $pieces[0] . '_' . $pieces[1];
     }
 }

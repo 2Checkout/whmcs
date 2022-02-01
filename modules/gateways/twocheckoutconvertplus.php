@@ -154,7 +154,7 @@ function twocheckoutconvertplus_link($params)
         $buyLinkParams['renewal-price'] = implode(';', $itemsArray["renewal-price"]);
     }
 
-    $buyLinkParams['src'] = 'WHMCS_' . $params['whmcsVersion'];
+    $buyLinkParams['src'] = TwocheckoutHelper::getFormattedVersion($params['whmcsVersion']);
     $buyLinkParams['return-type'] = 'redirect';
     $buyLinkParams['return-url'] = $customReturnUrl;
     $buyLinkParams['expiration'] = time() + (3600 * 5);
@@ -197,3 +197,21 @@ function twocheckoutconvertplus_refund($params)
     return TwocheckoutHelper::refund($params, $_POST);
 }
 
+/**
+ * @param $params
+ *
+ * @return array
+ * @throws \Exception
+ */
+function twocheckoutconvertplus_cancelSubscription($params)
+{
+    $twocheckoutConfig = [
+        "accountId" => $params['accountId'],
+        "secretKey" => $params['secretKey']
+    ];
+    TwocheckoutHelper::callAPI('DELETE', "subscriptions/{$params['subscriptionID']}/", $twocheckoutConfig);
+    return [
+        'status' => 'success',
+        'rawdata' => ['Subscription with 2Checkout reference: ' . $params['subscriptionID'] . ' was canceled!']
+    ];
+}

@@ -28,7 +28,7 @@ function twocheckoutinline_MetaData()
  */
 function twocheckoutinline_config()
 {
-    return  TwocheckoutHelper::config('2Checkout  Inline',\App::getSystemURL() . 'modules/gateways/callback/twocheckout-ipn.php?tco_type=inline');
+    return TwocheckoutHelper::config('2Checkout  Inline', \App::getSystemURL() . 'modules/gateways/callback/twocheckout-ipn.php?tco_type=inline');
 }
 
 /**
@@ -109,7 +109,7 @@ function twocheckoutinline_link($params)
     $inlineParams['test'] = $params['testMode'] === 'on' ? 1 : 0;
     $inlineParams['order-ext-ref'] = $params['invoiceid'];
     $inlineParams['customer-ext-ref'] = $client['email'];
-    $inlineParams['src'] = 'WHMCS_' . $params['whmcsVersion'];
+    $inlineParams['src'] = TwocheckoutHelper::getFormattedVersion($params['whmcsVersion']);
     $inlineParams['dynamic'] = 1;
     $inlineParams['merchant'] = $params['accountId'];
     $inlineParams['shipping_address'] = ($shippingAddressData);
@@ -137,6 +137,20 @@ function twocheckoutinline_link($params)
  * @return array
  * @throws \Exception
  */
+function twocheckoutinline_cancelSubscription($params)
+{
+    $twocheckoutConfig = [
+        "accountId" => $params['accountId'],
+        "secretKey" => $params['secretKey']
+    ];
+    TwocheckoutHelper::callAPI('DELETE', "subscriptions/{$params['subscriptionID']}/", $twocheckoutConfig);
+    return [
+        'status' => 'success',
+        'rawdata' => ['Subscription with 2Checkout reference: ' . $params['subscriptionID'] . ' was canceled!']
+    ];
+}
+
+
 function twocheckoutinline_refund($params)
 {
     return TwocheckoutHelper::refund($params, $_POST);

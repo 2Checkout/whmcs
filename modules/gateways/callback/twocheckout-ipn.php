@@ -29,6 +29,7 @@ if ($gatewayType === 'api') {
 } else {
     $refNo = isset($_GET['refno']) && !empty($_GET['refno']) ? $_GET['refno'] : null;
 }
+
 if ($refNo) {
     $return = "<html>\n<head>\n<title>" . $twocheckoutConfig['companyname'] . "</title>\n";
     $orderData = TwocheckoutApi::callAPI("GET", "orders/" . $refNo . "/", $twocheckoutConfig);
@@ -38,6 +39,16 @@ if ($refNo) {
         $invoiceId = $orderData['ExternalReference'];
         $invoiceId = checkCbInvoiceID($invoiceId, $twocheckoutConfig['paymentmethod']);
         if (in_array($orderData['Status'], ['AUTHRECEIVED', 'COMPLETE'])) {
+
+            // add subscription reference for all recurring products (for possible cancel action)
+            foreach ($orderData['Items'] as $item) {
+                if (isset($item['ProductDetails']['Subscriptions']) && count($item['ProductDetails']['Subscriptions'])) {
+                    $subscriptionReference = $item['ProductDetails']['Subscriptions'][0]['SubscriptionReference'];
+                    $id = preg_replace('/\D/', '', $item['ExternalReference']);
+                    Capsule::table('tblhosting')->whereId($id)->update(['subscriptionid' => $subscriptionReference]);
+                }
+            }
+
             $baseUrl = \App::getSystemURL() . "viewinvoice.php?id=" . $invoiceId;
             if ($skipFraud) {
                 checkCbTransID($transactionId);

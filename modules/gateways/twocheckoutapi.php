@@ -17,6 +17,9 @@ function twocheckoutapi_MetaData()
     );
 }
 
+/**
+ * @return array
+ */
 function twocheckoutapi_config()
 {
     $default_style = "{
@@ -207,6 +210,10 @@ add_hook("ClientAreaFooterOutput", 1, function (array $vars) {
     return $return;
 });
 
+/**
+ * @param array $params
+ * @return string
+ */
 function twocheckoutapi_cc_validation(array $params = array())
 {
     if (App::isInRequest("remoteStorageToken")) {
@@ -215,6 +222,10 @@ function twocheckoutapi_cc_validation(array $params = array())
     return "";
 }
 
+/**
+ * @param array $params
+ * @return string
+ */
 function twocheckoutapi_credit_card_input(array $params = array())
 {
     $assetHelper = DI::make("asset");
@@ -223,6 +234,10 @@ function twocheckoutapi_credit_card_input(array $params = array())
     return "<script type=\"text/javascript\">\n  var customTwoPayStyle = " . $params["customTwoPayStyle"] . ";" . "     var defaultStyle = '" . $params["defaultStyle"] . "';" . "  var accountId = '" . $params["accountId"] . "';" . "\n</script>\n<script type=\"text/javascript\" src=\"" . $jsUrl . "\"></script>";
 }
 
+/**
+ * @param array $params
+ * @return array
+ */
 function twocheckoutapi_storeremote(array $params = array())
 {
     $token = WHMCS\Session::getAndDelete("remoteStorageToken");
@@ -238,6 +253,10 @@ function twocheckoutapi_storeremote(array $params = array())
     return array("gatewayid" => $token, "status" => "success", "rawdata" => json_encode($response));
 }
 
+/**
+ * @param $params
+ * @return array|void
+ */
 function twocheckoutapi_capture($params)
 {
     // Gateway Configuration Parameters
@@ -368,7 +387,7 @@ function twocheckoutapi_capture($params)
         "Language" => $params['en'],
         "Country" => $params['clientdetails']['country'],
         "ExternalReference" => $params['invoiceid'],
-        "Source" => 'WHMCS_' . $params['whmcsVersion'],
+        "Source" => TwocheckoutHelper::getFormattedVersion($params['whmcsVersion']),
         "Items" => $itemsArray,
         "PaymentDetails" => array(
             "Type" => "EES_TOKEN_PAYMENT",
@@ -382,7 +401,7 @@ function twocheckoutapi_capture($params)
         $orderDetails['PaymentDetails']['Type'] = 'TEST';
     }
 
-    // Use to not store payment methods, this is a work around until whmcs gets back to us on a proper way to handle this
+    // Use to not store payment methods, this is a workaround until whmcs gets back to us on a proper way to handle this
     $payMethod = \WHMCS\Payment\PayMethod\Model::find($params['payMethod']['id']);
     $payment = $payMethod->payment;
     $payment->deleteRemote();
@@ -443,9 +462,34 @@ function twocheckoutapi_capture($params)
     return $returnData;
 }
 
+/**
+ * @param $params
+ * @return array
+ * @throws Exception
+ */
 function twocheckoutapi_refund($params)
 {
     return TwocheckoutHelper::refund($params, $_POST);
+}
+
+
+/**
+ * @param $params
+ *
+ * @return array
+ * @throws \Exception
+ */
+function twocheckoutapi_cancelSubscription($params)
+{
+    $twocheckoutConfig = [
+        "accountId" => $params['accountId'],
+        "secretKey" => $params['secretKey']
+    ];
+    TwocheckoutHelper::callAPI('DELETE', "subscriptions/{$params['subscriptionID']}/", $twocheckoutConfig);
+    return [
+        'status' => 'success',
+        'rawdata' => ['Subscription with 2Checkout reference: ' . $params['subscriptionID'] . ' was canceled!']
+    ];
 }
 
 function cmpPrices($a, $b)
