@@ -114,6 +114,7 @@ function twocheckoutinline_link($params)
     $inlineParams['merchant'] = $params['accountId'];
     $inlineParams['shipping_address'] = ($shippingAddressData);
     $inlineParams['billing_address'] = ($billingAddressData);
+    $inlineParams['customization'] = ( $params['inlineTemplate'] === 'Multi step inline' ? 'inline' : ( $params['inlineTemplate'] === 'One step inline' ? 'inline-one-step' : '' ) );
 
     if (isset($client['companyname'])) {
         $inlineParams['company-name'] = $client['companyname'];

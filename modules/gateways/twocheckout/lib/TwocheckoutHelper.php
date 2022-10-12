@@ -209,7 +209,14 @@ class TwocheckoutHelper
                 'Rows' => '10',
                 'Cols' => '30',
                 'Description' => 'Enter the reasons for refunds that you have <a target="_blank" href="https://knowledgecenter.2checkout.com/Documentation/27Refunds_and_chargebacks/Refunds#Adding_custom_refund_reasons">setup in your 2Checkout account</a>.',
-            ]
+            ],
+            'inlineTemplate' => [
+                'FriendlyName' => 'Template',
+                'Type' => 'radio',
+                'Options' => 'One step inline,Multi step inline',
+                'Default' => 'One step inline',
+                'Description' => 'Choose between a multi-step or a one-step inline checkout.',
+            ],
         ];
         return array_merge($fields, $extraFields);
     }

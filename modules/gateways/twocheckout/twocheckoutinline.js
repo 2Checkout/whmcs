@@ -17,7 +17,7 @@ function prepareInline(payload){
             };
             firstScriptElement.parentNode.insertBefore(script, firstScriptElement);
     })(document, 'https://secure.2checkout.com/checkout/client/twoCoInlineCart.js', 'TwoCoInlineCart',
-        {'app': {'merchant': payload.merchant}, 'cart': {'host': 'https:\/\/secure.2checkout.com'}}
+        {'app': {'merchant': payload.merchant}, 'cart': {'host': 'https:\/\/secure.2checkout.com', 'customization': payload.customization}}
     );
 }
 
