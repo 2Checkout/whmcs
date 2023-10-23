@@ -22,9 +22,9 @@ class TwocheckoutApi
         $accept = 'application/json';
         $code = $config['accountId'];
         $key = $config['secretKey'];
-        $hash = hash_hmac('md5', strlen($code) . $code . strlen($date) . $date, $key);
+        $hash = hash_hmac('sha3-256', strlen($code) . $code . strlen($date) . $date, $key);
         $headers = [
-            'X-Avangate-Authentication: ' . 'code="' . $code . '" date="' . $date . '" hash="' . $hash . '"',
+            'X-Avangate-Authentication: ' . 'code="' . $code . '" date="' . $date . '" hash="' . $hash . '" algo="sha3-256"',
             'Accept: ' . $accept,
             'Content-Type: application/json',
         ];
@@ -78,7 +78,7 @@ class TwocheckoutApi
             CURLOPT_HTTPHEADER => [
                 'content-type: application/json',
                 'cache-control: no-cache',
-                'merchant-token: ' . self::generateJWT($sellerId, $secretWord),
+                'merchant-token: ' . (new TwocheckoutApi)->generateJWT($sellerId, $secretWord),
             ],
         ]);
         $response = curl_exec($curl);

@@ -11,7 +11,7 @@ class TwocheckoutHelper
      * @param $params
      * @return string
      */
-    private function getConvertedPrice($price, $params)
+    private static function getConvertedPrice($price, $params)
     {
         $exchange_rate = (float)$params['FxRate'] > 0 ? (float)$params['FxRate'] : 1;
         $fx_commission = ((float)$params['FxMarkup'] > 0) ? 100 / (100 - (float)$params['FxMarkup']) : 1;
@@ -157,7 +157,7 @@ class TwocheckoutHelper
      * @param array $extraFields
      * @return array
      */
-    public function config($name, $ipn, $extraFields = [])
+    public static function config($name, $ipn, $extraFields = [])
     {
         $fields = [
             'FriendlyName' => [

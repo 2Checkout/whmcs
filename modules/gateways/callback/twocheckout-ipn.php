@@ -203,11 +203,15 @@ function ArrayExpand($array)
     return $retval;
 }
 
-function hmac($key, $data)
+function hmac($key, $data, $receivedAlgo = 'sha3-256')
 {
+    if ('sha3-256' === $receivedAlgo) {
+        return hash_hmac($receivedAlgo, $data, $key);
+    }
+
     $b = 64;
     if (strlen($key) > $b) {
-        $key = pack("H*", md5($key));
+        $key = pack("H*", hash($receivedAlgo, $key));
     }
     $key = str_pad($key, $b, chr(0x00));
     $ipad = str_pad('', $b, chr(0x36));
@@ -215,7 +219,7 @@ function hmac($key, $data)
     $k_ipad = $key ^ $ipad;
     $k_opad = $key ^ $opad;
 
-    return md5($k_opad . pack("H*", md5($k_ipad . $data)));
+    return hash($receivedAlgo, $k_opad . pack("H*", hash($receivedAlgo, $k_ipad . $data)));
 }
 
 /**
@@ -224,10 +228,27 @@ function hmac($key, $data)
 function isIpnResponseValid($params, $secret_key)
 {
     $result = '';
-    $receivedHash = $params['HASH'];
-    foreach ($params as $key => $val) {
 
-        if ($key != "HASH") {
+    $receivedHash = null;
+    $receivedAlgo = null;
+
+    if (!$receivedHash && !empty($params['SIGNATURE_SHA3_256'])) {
+        $receivedHash = $params['SIGNATURE_SHA3_256'];
+        $receivedAlgo = 'sha3-256';
+    }
+
+    if (!$receivedHash && !empty($params['SIGNATURE_SHA2_256'])) {
+        $receivedHash = $params['SIGNATURE_SHA2_256'];
+        $receivedAlgo = 'sha2-256';
+    }
+
+    if (!$receivedHash && !empty($params['HASH'])) {
+        $receivedHash = $params['HASH'];
+        $receivedAlgo = 'md5';
+    }
+
+    foreach ($params as $key => $val) {
+        if (!in_array($key, ['SIGNATURE_SHA3_256', 'SIGNATURE_SHA2_256', 'HASH'])) {
             if (is_array($val)) {
                 $result .= ArrayExpand($val);
             } else {
@@ -238,7 +259,7 @@ function isIpnResponseValid($params, $secret_key)
         }
     }
     if (isset($params['REFNO']) && !empty($params['REFNO'])) {
-        $calcHash = hmac($secret_key, $result);
+        $calcHash = hmac($secret_key, $result, $receivedAlgo);
         if ($receivedHash === $calcHash) {
             return true;
         }

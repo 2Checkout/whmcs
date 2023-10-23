@@ -94,34 +94,36 @@ function twocheckoutconvertplus_link($params)
     //Prepare Products structure
     $itemsArray = [];
     foreach ($products as $item) {
-        $lineItemAmount = (array_key_exists('firstPaymentAmount',
-            $item) ? $item['firstPaymentAmount'] : $item['amount']);
-        if (abs($lineItemAmount) > 0) {
-            $itemsArray["qty"][] = 1;
-            $itemsArray["prod"][] = htmlspecialchars_decode(StripSlashes($item['description']), ENT_COMPAT | ENT_QUOTES);
-            $itemsArray["tangible"][] = 0;
-            $itemsArray["type"][] = "PRODUCT";
-            $itemsArray["duration"][] = (isset($item['recurringCyclePeriod']) && isset($item['recurringCycleUnits'])) ? '1:' . 'FOREVER' : '';
-            $itemsArray['renewal-price'][] = abs($lineItemAmount);
-            $itemsArray['item-ext-ref'][] = $item['itemId'];
-            $itemsArray["recurrence"][] = (isset($item['recurringCyclePeriod']) && isset($item['recurringCycleUnits'])) ?
-                $item['recurringCyclePeriod'] . ':' . TwocheckoutHelper::mapRecurringUnit($item['recurringCycleUnits'])
-                : '';
-            $serviceId = (int)preg_replace('/\D/', '', $item['itemId']);
-            $price = abs($lineItemAmount);
+        if (is_array($item)) {
+            $lineItemAmount = (array_key_exists('firstPaymentAmount', $item)
+                ? $item['firstPaymentAmount']
+                : $item['amount']);
+            if (abs($lineItemAmount) > 0) {
+                $itemsArray["qty"][] = 1;
+                $itemsArray["prod"][] = htmlspecialchars_decode(StripSlashes($item['description']), ENT_COMPAT | ENT_QUOTES);
+                $itemsArray["tangible"][] = 0;
+                $itemsArray["type"][] = "PRODUCT";
+                $itemsArray["duration"][] = (isset($item['recurringCyclePeriod']) && isset($item['recurringCycleUnits'])) ? '1:' . 'FOREVER' : '';
+                $itemsArray['renewal-price'][] = abs($lineItemAmount);
+                $itemsArray['item-ext-ref'][] = $item['itemId'];
+                $itemsArray["recurrence"][] = (isset($item['recurringCyclePeriod']) && isset($item['recurringCycleUnits'])) ?
+                    $item['recurringCyclePeriod'] . ':' . TwocheckoutHelper::mapRecurringUnit($item['recurringCycleUnits'])
+                    : '';
+                $serviceId = (int)preg_replace('/\D/', '', $item['itemId']);
+                $price = abs($lineItemAmount);
 
-            //work around for recurring products with nonrecurring promotions
-            foreach ($coupons as $product) {
-                if ((isset($product['relid']) && $product['relid'] === $serviceId) &&
-                    (isset($product['service']) && $product['service']) && $product['amount'] > 0) {
-                    $promotion = Capsule::table('tblpromotions')->find($product['service']['promoid']);
-                    if ($promotion && $promotion->recurring === 0 && $product) {
-                        $price= abs($product['service']['firstpaymentamount']);
+                //work around for recurring products with nonrecurring promotions
+                foreach ($coupons as $product) {
+                    if ((isset($product['relid']) && $product['relid'] === $serviceId) &&
+                        (isset($product['service']) && $product['service']) && $product['amount'] > 0) {
+                        $promotion = Capsule::table('tblpromotions')->find($product['service']['promoid']);
+                        if ($promotion && $promotion->recurring === 0 && $product) {
+                            $price = abs($product['service']['firstpaymentamount']);
+                        }
                     }
                 }
+                $itemsArray["price"][] = $price;
             }
-            $itemsArray["price"][] = $price;
-
         }
     }
     // Add credit as coupon if present
