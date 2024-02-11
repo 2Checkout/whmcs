@@ -86,7 +86,8 @@ if ($refNo) {
 
     // Verify Hash
     if (isIpnResponseValid($_POST, $twocheckoutConfig['secretKey'])) {
-        echo calculateIpnResponse($_POST, $twocheckoutConfig['secretKey']);
+        $hashArr = extractHashFromRequest($_POST);
+        echo calculateIpnResponse($_POST, $twocheckoutConfig['secretKey'], $hashArr['algo']);
         flush();
         ob_flush();
 
@@ -271,21 +272,51 @@ function isIpnResponseValid($params, $secret_key)
 /**
  * @param $params
  * @param $secret_key
+ * @param $also
  *
  * @return string
  */
-function calculateIpnResponse($params, $secret_key)
+function calculateIpnResponse($params, $secret_key, $algo)
 {
-    $resultResponse = '';
-    $ipnParamsResponse = [];
-    $ipnParamsResponse['IPN_PID'][0] = $params['IPN_PID'][0];
-    $ipnParamsResponse['IPN_PNAME'][0] = $params['IPN_PNAME'][0];
-    $ipnParamsResponse['IPN_DATE'] = $params['IPN_DATE'];
-    $ipnParamsResponse['DATE'] = date('YmdHis');
+        $resultResponse = '';
+        $ipnParamsResponse = [];
+        // we're assuming that these always exist, if they don't then the problem is on avangate side
+        $ipnParamsResponse['IPN_PID'][0] = $params['IPN_PID'][0];
+        $ipnParamsResponse['IPN_PNAME'][0] = $params['IPN_PNAME'][0];
+        $ipnParamsResponse['IPN_DATE'] = $params['IPN_DATE'];
+        $ipnParamsResponse['DATE'] = date('YmdHis');
 
-    foreach ($ipnParamsResponse as $key => $val) {
-        $resultResponse .= ArrayExpand((array)$val);
-    }
-
-    return sprintf('<EPAYMENT>%s|%s</EPAYMENT>', $ipnParamsResponse['DATE'], hmac($secret_key, $resultResponse));
+        foreach ($ipnParamsResponse as $key => $val) {
+            $resultResponse .= ArrayExpand((array)$val);
+        }
+        if ('md5' === $algo)
+            return sprintf(
+                '<EPAYMENT>%s|%s</EPAYMENT>',
+                $ipnParamsResponse['DATE'],
+                hmac($secret_key, $resultResponse, $algo)
+            );
+        else
+            return sprintf(
+                '<sig algo="%s" date="%s">%s</sig>',
+                $algo,
+                $ipnParamsResponse['DATE'],
+                hmac($secret_key, $resultResponse, $algo));
 }
+
+function extractHashFromRequest($params): array
+    {
+        $receivedAlgo = 'sha3-256';
+        $receivedHash = $params['SIGNATURE_SHA3_256'] ?? null;
+
+        if (!$receivedHash) {
+            $receivedAlgo = 'sha256';
+            $receivedHash = $params['SIGNATURE_SHA2_256'] ?? null;
+        }
+
+        if (!$receivedHash) {
+            $receivedAlgo = 'md5';
+            $receivedHash = $params['HASH'];
+        }
+
+        return ['hash' => $receivedHash, 'algo' => $receivedAlgo];
+    }
