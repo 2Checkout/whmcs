@@ -33,4 +33,5 @@ This repository includes modules for each 2Checkout interface:
 3. There you can find the 'Merchant Code', 'Secret key', and the 'Buy link secret word'
 4. Navigate to **Dashboard** → **Integrations** → **Ipn Settings**
 5. Input the IPN URL available in the configuration page in WHMCS.
-6. Enable 'Triggers' in the IPN section. It’s simpler to enable all the triggers. Those who are not required will simply not be used.
+6. When adding the IPN URL make sure you check **SHA3** as Hashing algorithm
+7. Enable 'Triggers' in the IPN section. It’s simpler to enable all the triggers. Those who are not required will simply not be used.
