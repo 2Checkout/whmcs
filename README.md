@@ -15,7 +15,7 @@ This repository includes modules for each 2Checkout interface:
 
 #### WHMCS Settings
 
-1. Copy the directory for the module that you want to install to your WordPress plugins directory under '/wp-content/plugins'.
+1. Copy the directory for the module that you want to install to your WHMCS directory on your web server.
 2. In your WHMCS admin, navigate to **Setup** -> **Payments** -> **Payment Gateways** and under **All Payment Gateways** click to install the module you want to use.
 3. Under **Manage Existing Gateways**, locate the module that you activated.
 4. Check to **Show on Order Form**.
